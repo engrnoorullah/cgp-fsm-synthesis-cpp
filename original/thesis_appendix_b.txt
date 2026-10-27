@@ -1,0 +1,453 @@
+CGP code written in C++
+
+// genotype.cpp : Defines the entry point for the console application.
+//
+
+//#include "stdafx.h"
+
+#include <iostream>
+#include <stdlib.h>
+#include <conio.h>
+#include <math.h>
+#include <fstream>
+
+using namespace std;
+
+
+const int ni=6, no=7, nin=2, nof=8, num_eqs=51;
+int nn=50, size=nn*(nin+1)+no;
+int num_eqscount=0, outdescount=0;
+
+void genotype (int[]);
+void phenotype(int[], bool[][ni], bool[]);
+float RMSE (bool[], bool[][no]);
+void mutategeno (int[],int[], int);
+
+
+int main ()
+{
+
+ifstream fin, fin_out, fin_inarray;
+ofstream fout;
+
+bool outdes[num_eqs][no]={0};
+bool inarray[num_eqs][ni];
+int G[size];
+int optimizedgeno[size];
+bool P[size];
+int test;
+
+do
+{
+cout<<endl<<endl<<"Please enter 0 to test and 1 to train and 2 to exit    ";
+cin>>test;
+
+switch(test)
+{
+case 0:
+{
+int geno_in[size],a;
+num_eqscount=0;
+ifstream fin;
+
+for (int i=0;i<num_eqs;i++)
+{
+for (int j=0;j<ni;j++)
+inarray[i][j]=0;
+}
+num_eqscount=0;
+
+fin.open("D:\\output_circuit.txt");
+
+for(int i=0;i<size;i++)
+fin>>geno_in[i];
+
+cout<<endl<<"Plz enter input values"<<endl;
+
+for (int i=0;i<ni;i++)
+cin>>inarray[num_eqscount][k];
+
+phenotype(geno_in,inarray,P);
+
+cout<<endl<<"The output is "<<endl;
+
+for(int k=0;k<no;k++)
+cout<<P[size-no+k]<<", ";
+
+cout<<endl;
+num_eqscount=0;
+
+break;
+}            
+
+
+case 1:
+{
+
+fin_inarray.open("D:\\inarray_file.txt");
+
+for (int filler=0;filler<num_eqs;filler++)
+{
+for (int filler2=0;filler2<ni;filler2++)
+fin_inarray>>inarray[filler][filler2];
+}
+
+fin_inarray.close();           
+
+fin_out.open("D:\\outdes_file.txt");
+
+for(int filler=0;filler<num_eqs;filler++)
+{
+for (int filler2=0;filler2<no;filler2++)
+find0>>outdes[filler][filler2];
+}
+
+fin_out.close();
+
+srand(10);
+
+int geno[size];
+genotype(G);
+
+
+int counter=0, chkr, generationcount=1, qcount=0, mutrate=(size*10)/100;
+float least,errorstemp;
+int all_least[num_eqs];
+float errors[nof+1];
+float error[num_eqs];
+int mutgenoarr[nof+1][size];
+bool outact[no];
+
+int genoff[size];
+
+
+for (int i=0;i<size;i++)
+geno[i]=G[i];
+
+do
+{
+for(int i=0;i<nof+1;i++)
+{
+
+for (int j=0;j<num_eqs; j++)
+{
+
+if(i==0)
+{
+
+if(j==0)
+{
+
+       for(int k=0;k<size;k++)
+    mutgenoarr[i][k] = geno[k];
+
+    phenotype(geno,inarray,P);
+
+}
+
+else if(j>=1)
+       phenotype(geno,inarray,P);
+
+}
+
+else
+{
+
+if(j == 0)
+{
+      mutategeno(geno,genoff, mutrate);
+
+     for (int k=0; k<size; k++)
+     mutgenoarr[i][k] = genoff[k];
+
+     phenotype(genoff,inarray,P);
+
+}
+
+else if (j>=1)
+      phenotype(genoff,inarray,P);
+}
+
+counter=0;
+
+for (int k=size-no; k<size; k++)
+{
+outact[counter]=P[k];
+counter++;
+}
+
+error[j] = RMSE (outact, outdes);
+
+num_eqscount++;
+outdescount++;
+
+}
+
+errorstemp=0;
+
+for (int k=0; k<num_eqs; k++)
+errorstemp=error[k]+errorstemp;
+
+errors[i]=errorstemp/num_eqs;
+
+num_eqscount=0;
+outdescount=0;
+
+}
+
+least=errors[0];
+chkr=0;
+
+for (int k=1; k<nof+1; k++)
+{
+if(errors[k]<=least)
+{
+least=errors[k];
+chkr=k;
+}
+}
+
+
+if(errors[0] >= errors[chkr])
+{
+for(int k=0; k<size;k++)
+geno[k] = mutgenoarr[chkr][k];
+}
+
+if (generationcount==1 || generationcount%200==0)
+{
+
+cout<<endl<<errors[0]<<" "<<errors[chkr]<<endl;
+
+if(errors[0]<errors[chkr])
+cout<<"\n\nThe least error is "<<least
+<<" at "<<0<<" place"<<" and generation is "<<generationcount<<endl<<endl;
+
+else
+cout<<"\n\nThe least error is "<<least<<" at "<<chkr<<" place"<<" and generation is "<<generationcount<<endl<<endl;
+}
+
+if(least==0)
+{
+cout<<endl<<"hurray we got a match at generation "<<generationcount<<" and error is "<<least<<endl;
+
+for(int k=0;k<size;k++)
+optimizedgeno[k]=mutgenoarr[chkr][k];
+}
+
+generationcount++;
+
+} while(least!=0);
+
+fout.open("D:\\output_circuit.txt");
+for (int i=0;i<size;i++)
+fout<<optimizedgeno[i]<<endl;
+
+break;
+
+}
+
+}
+
+}while(test!=2); 
+
+return 0;
+
+}
+
+/* Function for creating genotype. Return type is a pointer */
+
+void genotype (int G[])
+{
+
+int modfact=ni;
+
+for (int i=0; i<size-no; i=i+nin+1)	
+{
+G[i]=rand()%2;		
+for (int j=i+1; j<i+nin+1; j++)
+G[j]=rand()% modfact;
+
+modfact++;
+
+}
+
+for (int k=size-no; k<size; k++)
+G[k]=rand()%(nn+ni);
+
+}
+
+
+
+/* function to create phenotype from give genotype. Return type is int* (pointer) and paramenter is genotype array */
+
+void phenotype(int gen[],bool inarray[][ni], bool P[])
+{
+int allinputscounter=0;
+bool temp;
+bool inarr[ni+nn];
+
+for (int i=0; i<ni; i++)
+{
+inarr[i]=inarray[num_eqscount][i];
+allinputscounter++;
+}
+
+for (int i=0; i<size-no; i=i+nin+1)
+{
+switch(gen[i])
+{
+case 0:
+{
+temp=0;
+temp=!((inarr[gen[i+1]])&(inarr[gen[i+2]]));
+inarr[allinputscounter]=temp;
+allinputscounter++;
+break;
+
+}
+
+case 1:
+{
+temp=0;
+temp=!((inarr[gen[i+1]])|(inarr[gen[i+2]]));
+inarr[allinputscounter]=temp;
+allinputscounter++;
+break;
+
+}             
+
+}
+
+}
+
+for (int i=0; i<size-no; i++)
+{
+if(i==0 || i%(nin+1)==0)
+P[i]=gen[i];
+
+else
+P[i]=inarr[gen[i]];
+}
+
+for (int i=size-no; i<size; i++)
+P[i]=inarr[gen[i]];
+
+}
+
+
+/* Function for calculating the root mean square error b/w actual and desire outputs. Return type is int and parameters are the outact[] and outdes[] */
+
+float RMSE (bool outact[], bool outdes[][no])
+{
+
+float outactor[no]={0},outact_sum=0,outdes_sum=0,act=0,des=0;
+
+for (int i=no-1;i<=0;i++)
+outactor[i]=(outact[i]*pow(2,(no-1-i)))*(outact[i]*pow(2,(no-1-i)));
+
+outact_sum=0;    
+for (int i=0;i<no;i++)
+outact_sum=outactor[i]+outact_sum;
+
+act=sqrt(outact_sum/no);
+
+for (int i=no-1;i<=0;i++)
+outdesor[i]=(outdes[outdescount][i]*pow(2,(no-1-i))) * (outdes[outdescount][i]*pow(2,(no-1-i)));
+
+outdes_sum=0;    
+for (int i=0;i<no;i++)
+outdes_sum=outdesor[i]+outdes_sum;
+
+des=sqrt(outdes_sum/no);
+
+float diff = des - act;
+
+if (diff<0)
+return (-1*diff);
+else
+return diff;
+
+}
+
+
+
+/* Function for mutating the offspring and returning the mutated offsprings */
+
+void mutategeno (int geno[],int genoff[], int mutrate)
+{
+int a, b, nfound, nincount;
+
+for (int i=0;i<size;i++)
+genoff[i]=geno[i];
+
+for (int i=0;i<mutrate;i++)
+{
+a=rand()%size;
+
+if((a==0 || (a%(nin+1)==0)) && a<size-no)
+genoff[a]=rand()%2;
+
+else if (a>=(size-no))
+genoff[a]=rand()%(nn+ni);
+
+else
+{
+nincount=nin;
+
+for(int j=0;j<nn;j++)
+{
+for (int k=nincount-nin+1;k<=nincount;k++)
+{
+if (a==k)
+{
+nfound=j+1;
+j=nn;
+break;
+}
+}
+
+nincount++;
+nincount=nincount+nin;
+}
+
+genoff[a]=rand()%(ni+nfound-1);
+
+}
+
+}
+
+}
+
+REFERENCES
+Mano, M. M., and Ciletti, M. D., (2012). Digital Design with An introduction to the Verilog HDL 5th ed, Prentic Hall publishers.
+
+Michelli, G. D., Brayton, R. K., and Vincentelli, A. S. (1985). Optimal State assignment for finite state machines. IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems, 4 (3), 269-285.
+
+Devadas, S. (1989). Approach to multilevel sequential logic synthesis. Proceedings of the 26th ACM/IEEE Design Automation Conference, 270-276.
+
+Mitra, B., and Chaudhury, P. P. (1991). A novel scheme for synthesis of sequential machines using cellular automata. CompEuro '91, Proceedings of the 5th Annual European Computer Conference on Advanced Computer Technology, Reliable Systems and Application, IEEE, 591-595.
+
+El-Maleh, A., Sait, M. S., and Khan, F. N. (2006). State assignment of finite state machines using a genetic algorithm. Proceedings of IEEE International Symposium on Circuits and Systems, 5303-5306.
+
+Almaini, A. E. A., Miller, J. F., Thomson, P., and Billina, S. (1995). State assignment of finite state machines using a genetic algorithm. Proceedings of IEEE Comput.- Digit. Tech, 142 (4), 279-286. 
+
+Garnica, O., Lanchares, J., and Sanches, J. M. (1997). Finite State Machine Optimization using Genetic Algorithm. Innovations and Applications, Second International Conference on Genetic Algorithms in Engineering Systems, IEE, 283-289.
+
+Chattopadhyay, S.,  Yadav, P., and Singh, R.K. (2004). Multiplexer Targeted Finite State Machine Encoding for Area and Power Minimization. India Annual Conference, Proceedings of the IEEE INDICON, 12-16.
+
+Gupta, B., Narayanan, H., and Desai, M. P. (1999). A State Assignment Scheme Targeting Performance and Area. Proceedings of Twelfth International Conference on VLSI Design, 378-383.
+
+Yuan, L., Qu, G., Villa, T., and Vincentelli, A. S. (2008). An FSM reengineering approach to sequential circuit synthesis by state splitting. IEEE Transactions on computer-aided design of integrated circuits and systems, 27 (6), 1159-1164.
+
+Shelar, R. S., Desai, M. P., and Narayanan, H. (1999). Decomposition of Finite State Machines for Area, Delay Minimization. ICCD 99 IEEE, International conference on computer design, 620-625, 1999.
+
+Ahmed, I., and Dhodhi, M. K. (2000). State assignment of finite-state machines. Proceedings of Comput. Digit. Tech, 147 (1), 15-22.
+
+Nedjah, N., and Mourelle, L. (2006). Evolutionary Synthesis of Synchronous Finite State Machines. International Conference on Computer Engineering and Systems, IEEE, 19-24.
+
+Shanti, A. P., Singaram, L. K., and Parthasarati, R. (2005). Evolution of Asynchronous Sequential Circuits. IEEE 2005, Proceedings of the NASA/DoD Conference of Evolution Hardware, 93-96.
+
+Miller, J. F. (2011). Cartesian Genetic Programming: Natural Computing Series, DOI, Springer-Verlag, Berlin Heidelberg
+
+Miller, J. F., and Thomson, P. (2000). Cartesian Genetic Programming. Eurogp2000, Proceedings of the third European Conference on Genetic Programming, 121-132.
